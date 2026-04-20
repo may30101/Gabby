@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>租金扣繳計算機</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+
+/* 色系變數：名片深咖啡棕+金棕 */
+:root {
+  --primary: #3d1f0f;      /* 深咖啡棕（主色） */
+  --secondary: #7a5230;    /* 金棕色（次色） */
+  --accent: #a0722a;       /* 金黃強調 */
+  --bg-light: #f7f2eb;     /* 米白底色 */
+  --border-light: #e0d0b8; /* 淺棕邊框 */
+  --text: #2a1a0a;         /* 深棕文字 */
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans TC', sans-serif; background: #fff; color: var(--text); }
+.wrap { max-width: 780px; margin: 0 auto; padding: 0 24px 60px; }
+
+/* TOP TABS */
+.top-tabs { display: flex; border: 2px solid var(--primary); border-radius: 10px; margin: 20px 0; overflow: hidden; }
+.top-tab { flex: 1; text-align: center; padding: 15px 8px; font-size: 18px; font-weight: 700; cursor: pointer; color: #999; background: #fff; text-decoration: none; display: block; }
+.top-tab.active { background: var(--primary); color: #fff; }
+
+/* TITLE */
+.page-title { text-align: center; font-size: 30px; font-weight: 900; padding: 16px 0 28px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.slash { color: var(--accent); }
+
+/* FORM ROW */
+.form-row { display: flex; align-items: center; margin-bottom: 20px; gap: 14px; }
+.form-label { font-size: 18px; font-weight: 700; min-width: 90px; flex-shrink: 0; }
+
+/* 個人/公司 切換 */
+.btn-group { display: flex; border: 2px solid var(--primary); border-radius: 8px; overflow: hidden; }
+.bg-btn { padding: 10px 36px; font-size: 16px; font-weight: 700; font-family: 'Noto Sans TC', sans-serif; border: none; cursor: pointer; background: #fff; color: #bbb; }
+.bg-btn + .bg-btn { border-left: 1px solid var(--primary); }
+.bg-btn.on { background: var(--primary); color: #fff; }
+
+/* 進階設定按鈕 */
+.adv-toggle-btn { background: #fff; border: 2px solid var(--secondary); color: var(--secondary); border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 700; font-family: 'Noto Sans TC', sans-serif; cursor: pointer; white-space: nowrap; }
+
+/* 進階設定面板 */
+.adv-panel { display: none; background: #fff; border: 2px solid var(--secondary); border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+.adv-panel.open { display: block; }
+.adv-header { display: grid; grid-template-columns: 40px 160px 1fr 200px; background: var(--secondary); color: #fff; font-weight: 700; font-size: 14px; }
+.adv-header > div { padding: 10px 16px; text-align: center; border-right: 1px solid rgba(255,255,255,.3); }
+.adv-header > div:last-child { border-right: none; }
+.adv-row { display: grid; grid-template-columns: 40px 160px 1fr 200px; border-top: 1px solid var(--border-light); align-items: start; }
+.adv-row > div { padding: 12px 16px; text-align: center; font-size: 14px; }
+.adv-row > div:not(:last-child) { border-right: 1px solid var(--border-light); }
+.cell-del { display: flex; align-items: center; justify-content: center; padding-top: 14px !important; }
+.del-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #8b0000; font-weight: 700; line-height: 1; }
+.cell-name { color: var(--secondary); font-weight: 700; display: flex; align-items: center; justify-content: center; }
+
+/* 身份下拉 */
+.identity-select { width: 100%; font-family: 'Noto Sans TC', sans-serif; font-size: 14px; border: 1px solid var(--secondary); border-radius: 6px; padding: 8px 10px; outline: none; cursor: pointer; appearance: none; -webkit-appearance: none; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a5230'/%3E%3C/svg%3E") no-repeat right 10px center; }
+
+/* 持有比例 */
+.pct-wrap { display: flex; align-items: center; border: 1px solid var(--secondary); border-radius: 6px; overflow: hidden; background: #fff; transition: background .2s; }
+.pct-wrap.err-bg { background: #ffe0e0; border-color: #8b0000; }
+.pct-input { flex: 1; border: none; outline: none; font-family: 'Noto Sans TC', sans-serif; font-size: 14px; padding: 8px 10px; text-align: right; min-width: 0; background: transparent; -moz-appearance: textfield; }
+.pct-input::-webkit-inner-spin-button, .pct-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.pct-unit { padding: 0 10px 0 4px; color: #555; font-size: 14px; flex-shrink: 0; }
+
+/* checkbox */
+.chk-row { display: flex; gap: 16px; margin-top: 8px; justify-content: center; flex-wrap: wrap; }
+.chk-label { display: flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; }
+.chk-label input[type=checkbox] { accent-color: var(--secondary); width: 14px; height: 14px; }
+
+/* 新增房東列 */
+.add-landlord-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-top: 1px solid var(--border-light); }
+.pct-total-hint { font-size: 13px; color: #555; }
+.pct-total-hint.err { color: #8b0000; font-weight: 700; }
+.add-btn { background: var(--secondary); color: #fff; border: none; border-radius: 6px; padding: 8px 20px; font-size: 14px; font-weight: 700; font-family: 'Noto Sans TC', sans-serif; cursor: pointer; }
+
+/* 租金輸入 */
+.rent-input { border: 2px solid var(--primary); border-radius: 8px; padding: 10px 14px; font-size: 22px; font-family: 'Noto Sans TC', sans-serif; text-align: right; outline: none; width: 210px; -moz-appearance: textfield; }
+.rent-input::-webkit-inner-spin-button, .rent-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.rent-input::placeholder { color: #ccc; }
+
+/* Radio */
+.radio-col { display: flex; flex-direction: column; gap: 8px; }
+.r-label { display: flex; align-items: center; gap: 8px; font-size: 15px; cursor: pointer; user-select: none; }
+.r-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #ccc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.r-dot.on { border-color: var(--secondary); }
+.r-dot.on::after { content: ''; display: block; width: 8px; height: 8px; border-radius: 50%; background: var(--secondary); }
+
+/* DOTTED LINE */
+.dot-line { border: none; border-top: 2px dashed var(--accent); opacity: .5; margin: 8px 0 24px; }
+
+/* RESULT */
+.result-block { margin-bottom: 24px; }
+.result-head { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 10px; }
+.result-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; font-size: 15px; }
+.rlbl { display: flex; align-items: center; gap: 6px; color: #333; }
+.star { font-size: 13px; }
+.ramt { font-weight: 700; color: var(--primary); }
+.info-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #aaa; color: #aaa; font-size: 9px; font-style: italic; font-weight: 700; cursor: pointer; }
+.dim { opacity: .3; }
+.result-note { font-size: 13px; color: var(--accent); margin-top: 10px; }
+.result-note::before { content: '＊ '; }
+
+/* 公司模式 */
+.company-msg { font-size: 15px; color: var(--secondary); margin-bottom: 16px; line-height: 1.6; }
+.company-msg .amt { color: var(--primary); font-weight: 700; }
+
+/* 總額提示 */
+.total-hint { font-size: 13px; color: var(--secondary); margin-bottom: 16px; padding: 10px 14px; background: var(--bg-light); border-radius: 8px; border: 1px solid var(--border-light); }
+
+/* ===== 彈出視窗 ===== */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000; align-items: center; justify-content: center; }
+.modal-overlay.show { display: flex; }
+.modal-box { background: #fff; border-radius: 14px; padding: 32px 28px 24px; max-width: 360px; width: 90%; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
+.modal-icon { font-size: 36px; margin-bottom: 12px; }
+.modal-title { font-size: 17px; font-weight: 700; color: var(--primary); margin-bottom: 10px; line-height: 1.5; }
+.modal-msg { font-size: 14px; color: #555; line-height: 1.7; margin-bottom: 24px; }
+.modal-confirm { background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 12px 32px; font-size: 15px; font-weight: 700; font-family: 'Noto Sans TC', sans-serif; cursor: pointer; }
+
+@media (max-width: 560px) {
+  .adv-header, .adv-row { grid-template-columns: 32px 90px 1fr 110px; }
+  .bg-btn { padding: 10px 18px; }
+  .page-title { font-size: 22px; }
+  .rent-input { width: 140px; font-size: 18px; }
+}
+</style>
+</head>
+<body>
+
+<!-- 彈出警告視窗 -->
+<div class="modal-overlay" id="pct-modal">
+  <div class="modal-box">
+    <div class="modal-icon">⚠️</div>
+    <div class="modal-title">持有比例總和超過 100% 囉！</div>
+    <div class="modal-msg">請調整比例總和為 100%<br>才能幫算出正確的數字喔！</div>
+    <button class="modal-confirm" onclick="closeModal()">確認，去調整</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="top-tabs">
+    <a class="top-tab active" href="#">租金</a>
+    <a class="top-tab" href="#">執行業務所得</a>
+  </div>
+
+  <div class="page-title">
+    <span class="slash">\\</span> 租金扣繳計算機 <span class="slash">//</span>
+  </div>
+
+  <!-- 房東 -->
+  <div class="form-row">
+    <div class="form-label">房東</div>
+    <div class="btn-group">
+      <button class="bg-btn on" id="btn-local" onclick="setLandlordType('local')">個人</button>
+      <button class="bg-btn" id="btn-company" onclick="setLandlordType('company')">公司</button>
+    </div>
+    <button class="adv-toggle-btn" id="adv-toggle" onclick="toggleAdv()">進階設定 ▾</button>
+  </div>
+
+  <!-- 進階設定面板 -->
+  <div class="adv-panel" id="adv-panel">
+    <div class="adv-header">
+      <div></div>
+      <div>房東</div>
+      <div>身分 <span style="font-size:12px;opacity:.8">ℹ</span></div>
+      <div>持有比例 (%)</div>
+    </div>
+    <div id="landlord-rows"></div>
+    <div class="add-landlord-row">
+      <span class="pct-total-hint" id="pct-hint">持有比例合計：100%</span>
+      <button class="add-btn" onclick="addLandlord()">新增房東</button>
+    </div>
+  </div>
+
+  <!-- 每期租金 -->
+  <div class="form-row">
+    <div class="form-label">每期租金</div>
+    <input type="number" class="rent-input" id="rent" placeholder="0" min="0" oninput="calc()">
+    <div class="radio-col" id="radio-col">
+      <div class="r-label" onclick="setMode('included')">
+        <span class="r-dot on" id="dot-inc"></span>租金已含稅
+      </div>
+      <div class="r-label" onclick="setMode('excluded')">
+        <span class="r-dot" id="dot-exc"></span>租金未含稅
+      </div>
+    </div>
+  </div>
+
+  <hr class="dot-line">
+  <div id="result-area"></div>
+
+</div>
+
+<script>
+var landlordType = 'local';
+var mode = 'included';
+var landlords = [{ id: 1, identity: 'local', pct: 100, stay183: false, hasInsurance: false }];
+var pctOverflow = false;
+
+function closeModal() {
+  document.getElementById('pct-modal').classList.remove('show');
+  // 把所有持有比例欄位標紅
+  var inputs = document.querySelectorAll('.pct-wrap');
+  for (var i = 0; i < inputs.length; i++) {
+    inputs[i].classList.add('err-bg');
+  }
+}
+
+function setLandlordType(t) {
+  landlordType = t;
+  document.getElementById('btn-local').className = 'bg-btn' + (t === 'local' ? ' on' : '');
+  document.getElementById('btn-company').className = 'bg-btn' + (t === 'company' ? ' on' : '');
+  document.getElementById('adv-toggle').style.display = t === 'company' ? 'none' : '';
+  document.getElementById('adv-panel').classList.remove('open');
+  document.getElementById('radio-col').style.display = t === 'company' ? 'none' : '';
+  calc();
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('dot-inc').className = 'r-dot' + (m === 'included' ? ' on' : '');
+  document.getElementById('dot-exc').className = 'r-dot' + (m === 'excluded' ? ' on' : '');
+  calc();
+}
+
+function toggleAdv() {
+  var p = document.getElementById('adv-panel');
+  var open = p.classList.toggle('open');
+  document.getElementById('adv-toggle').textContent = open ? '進階設定 ▴' : '進階設定 ▾';
+  calc();
+}
+
+function addLandlord() {
+  landlords.push({ id: landlords.length + 1, identity: 'local', pct: 0, stay183: false, hasInsurance: false });
+  renderLandlordRows();
+  calc();
+}
+
+function removeLandlord(i) {
+  if (landlords.length <= 1) return;
+  landlords.splice(i, 1);
+  landlords.forEach(function(l, idx) { l.id = idx + 1; });
+  renderLandlordRows();
+  calc();
+}
+
+function updateIdentity(i, val) {
+  landlords[i].identity = val;
+  if (val === 'local') { landlords[i].stay183 = false; landlords[i].hasInsurance = false; }
+  renderLandlordRows();
+  calc();
+}
+
+function updatePct(i, val) {
+  landlords[i].pct = parseFloat(val) || 0;
+  // 清除紅底（使用者正在調整）
+  var wraps = document.querySelectorAll('.pct-wrap');
+  for (var j = 0; j < wraps.length; j++) { wraps[j].classList.remove('err-bg'); }
+  updatePctHint();
+  calc();
+}
+
+function updateChk(i, field, val) {
+  landlords[i][field] = val;
+  renderLandlordRows();
+  calc();
+}
+
+function updatePctHint() {
+  var total = landlords.reduce(function(s, l) { return s + l.pct; }, 0);
+  var hint = document.getElementById('pct-hint');
+  hint.textContent = '持有比例合計：' + total.toFixed(1).replace('.0','') + '%';
+  hint.className = 'pct-total-hint' + (total > 100 ? ' err' : '');
+  return total;
+}
+
+function renderLandlordRows() {
+  var container = document.getElementById('landlord-rows');
+  container.innerHTML = '';
+  landlords.forEach(function(l, i) {
+    var isForeign = l.identity === 'foreign';
+    var showDel = landlords.length > 1;
+    var row = document.createElement('div');
+    row.className = 'adv-row';
+    row.innerHTML =
+      '<div class="cell-del">' + (showDel ? '<button class="del-btn" onclick="removeLandlord(' + i + ')">✕</button>' : '') + '</div>' +
+      '<div class="cell-name">房東 ' + l.id + '</div>' +
+      '<div>' +
+        '<select class="identity-select" onchange="updateIdentity(' + i + ', this.value)">' +
+          '<option value="local"' + (l.identity === 'local' ? ' selected' : '') + '>本國人</option>' +
+          '<option value="foreign"' + (l.identity === 'foreign' ? ' selected' : '') + '>外國人</option>' +
+        '</select>' +
+        (isForeign ?
+          '<div class="chk-row">' +
+            '<label class="chk-label"><input type="checkbox"' + (l.stay183 ? ' checked' : '') + ' onchange="updateChk(' + i + ',\'stay183\',this.checked)"> 有待滿 183 天</label>' +
+            '<label class="chk-label"><input type="checkbox"' + (l.hasInsurance ? ' checked' : '') + ' onchange="updateChk(' + i + ',\'hasInsurance\',this.checked)"> 有投保健保</label>' +
+          '</div>' : '') +
+      '</div>' +
+      '<div><div class="pct-wrap" id="pct-wrap-' + i + '"><input class="pct-input" type="number" value="' + l.pct + '" oninput="updatePct(' + i + ', this.value)"><span class="pct-unit">%</span></div></div>';
+    container.appendChild(row);
+  });
+  updatePctHint();
+}
+
+function fmt(n) { return '$' + Math.floor(n).toLocaleString('zh-TW'); }
+
+// 扣繳稅率：gross >= 20001 → 10%；外國人未待183天 → 一律20%
+function getTaxRate(identity, stay183, gross) {
+  if (identity === 'local') return gross >= 20001 ? 0.1 : 0;
+  if (identity === 'foreign') {
+    if (!stay183) return 0.2;
+    return gross >= 20001 ? 0.1 : 0;
+  }
+  return 0;
+}
+
+// 二代健保：gross >= 20000
+function getNhiApply(identity, hasInsurance, gross) {
+  if (identity === 'local') return gross >= 20000;
+  if (identity === 'foreign') return hasInsurance && gross >= 20000;
+  return false;
+}
+
+function calcOne(l, share, mode) {
+  var gross, rate, nhiApply, nhiRate, tax, nhi, totalDeduct, net;
+
+  if (mode === 'included') {
+    gross = Math.floor(share);
+    rate = getTaxRate(l.identity, l.stay183, gross);
+    nhiApply = getNhiApply(l.identity, l.hasInsurance, gross);
+    nhiRate = nhiApply ? 0.0211 : 0;
+    tax  = Math.floor(gross * rate);
+    nhi  = Math.round(gross * nhiRate);
+    totalDeduct = tax + nhi;
+    net  = gross - tax - nhi;
+
+  } else {
+    // 未含稅：輸入值 = net（實際支付租金未稅）
+    // net直接等於share，gross = net + tax + nhi
+    net = share;
+
+    // 第一次估算（用net估算稅率）
+    rate = getTaxRate(l.identity, l.stay183, net);
+    nhiApply = getNhiApply(l.identity, l.hasInsurance, net);
+    nhiRate = nhiApply ? 0.0211 : 0;
+    tax = Math.floor(net / (1 - rate - nhiRate) * rate);
+    nhi = Math.round(net / (1 - rate - nhiRate) * nhiRate);
+    gross = net + tax + nhi;
+
+    // 第二次確認（用gross重新判斷稅率）
+    rate = getTaxRate(l.identity, l.stay183, gross);
+    nhiApply = getNhiApply(l.identity, l.hasInsurance, gross);
+    nhiRate = nhiApply ? 0.0211 : 0;
+    tax = Math.floor(gross * rate);
+    nhi = Math.round(gross * nhiRate);
+    gross = net + tax + nhi;
+    totalDeduct = tax + nhi;
+  }
+
+  return { gross: gross, rate: rate, nhiApply: nhiApply, tax: tax, nhi: nhi, totalDeduct: totalDeduct, net: net };
+}
+
+function calc() {
+  var input = parseFloat(document.getElementById('rent').value) || 0;
+  var area = document.getElementById('result-area');
+  area.innerHTML = '';
+
+  // ===== 公司模式 =====
+  if (landlordType === 'company') {
+    var base = input / 1.05;
+    var tax = base * 0.05;
+    area.innerHTML =
+      '<div class="result-block">' +
+      '<p class="company-msg">若房東是公司，則應跟房東索取租金發票，發票總金額為 <span class="amt">' + fmt(input) + '</span> 元</p>' +
+      '<div class="result-row"><span class="rlbl"><span class="star">＊</span> 銷售額</span><span class="ramt">' + fmt(base) + '</span></div>' +
+      '<div class="result-row"><span class="rlbl"><span class="star">＊</span> 稅額</span><span class="ramt">' + fmt(tax) + '</span></div>' +
+      '<div class="result-row"><span class="rlbl"><span class="star">＊</span> 總金額</span><span class="ramt">' + fmt(input) + '</span></div>' +
+      '</div>';
+    return;
+  }
+
+  // ===== 個人模式 =====
+  var advOpen = document.getElementById('adv-panel').classList.contains('open');
+  var list = advOpen ? landlords : [{ id: 1, identity: 'local', pct: 100, stay183: false, hasInsurance: false }];
+
+  if (advOpen) {
+    var pctTotal = landlords.reduce(function(s, l) { return s + l.pct; }, 0);
+    if (pctTotal > 100) {
+      document.getElementById('pct-modal').classList.add('show');
+      return;
+    }
+  }
+
+  var results = [];
+  list.forEach(function(l) {
+    var share = advOpen ? input * (l.pct / 100) : input;
+    var r = calcOne(l, share, mode);
+    r.l = l;
+    results.push(r);
+  });
+
+  // 總額提示
+  var totalGross = results.reduce(function(s, r) { return s + r.gross; }, 0);
+  var totalNet   = results.reduce(function(s, r) { return s + r.net; }, 0);
+  if (advOpen && landlords.length > 1) {
+    var hintText = mode === 'included'
+      ? '所有房東每期租金（含稅）總額：' + fmt(totalGross)
+      : '所有房東實際支付租金（未稅）總額：' + fmt(totalNet);
+    area.innerHTML += '<div class="total-hint">' + hintText + '</div>';
+  }
+
+  results.forEach(function(r) {
+    var l = r.l;
+    var names = { local: '本國人', foreign: '外國人' };
+    var noteText = l.identity === 'local'
+      ? '本國人應於次月 10 日前繳納繳款書'
+      : (l.stay183 ? '外國人待滿 183 天，應於次月 10 日前繳納繳款書' : '外國人未待滿 183 天，應於給付 10 日內繳納繳款書');
+
+    area.innerHTML +=
+      '<div class="result-block">' +
+      '<div class="result-head">房東 ' + l.id + '：' + names[l.identity] + '</div>' +
+      '<div class="result-row"><span class="rlbl"><span class="star">＊</span> 每期租金（含稅）</span><span class="ramt">' + fmt(r.gross) + '</span></div>' +
+      '<div class="result-row"><span class="rlbl"><span class="star">＊</span> 扣繳 ' + (r.rate * 100).toFixed(0) + '% <span class="info-icon">i</span></span><span class="ramt">' + fmt(r.tax) + '</span></div>' +
+      '<div class="result-row' + (r.nhiApply ? '' : ' dim') + '"><span class="rlbl"><span class="star">＊</span> 二代健保 2.11%</span><span class="ramt">' + fmt(r.nhi) + '</span></div>' +
+      '<div class="result-row"><span class="rlbl"><span class="star">＊</span> 租扣二代總金額</span><span class="ramt">' + fmt(r.totalDeduct) + '</span></div>' +
+      '<div class="result-row"><span class="rlbl"><span class="star">＊</span> 實際支付租金（未稅）</span><span class="ramt">' + fmt(r.net) + '</span></div>' +
+      '<div class="result-note">' + noteText + '</div>' +
+      '</div>';
+  });
+}
+
+renderLandlordRows();
+calc();
+</script>
+</body>
+</html>
